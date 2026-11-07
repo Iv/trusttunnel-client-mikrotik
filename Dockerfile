@@ -23,7 +23,8 @@ ARG VERSION
 LABEL org.opencontainers.image.title="trusttunnel-client-mikrotik" \
       org.opencontainers.image.description="Minimal TrustTunnel Client for MikroTik RouterOS containers (arm64/armv7); logs to stdout only" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/TrustTunnel/TrustTunnelClient"
+      org.opencontainers.image.source="https://github.com/Iv/trusttunnel-client-mikrotik" \
+      org.opencontainers.image.url="https://hub.docker.com/r/quai1rol/trusttunnel-client-mikrotik"
 
 COPY --from=fetch /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=fetch /out/ /opt/trusttunnel/
