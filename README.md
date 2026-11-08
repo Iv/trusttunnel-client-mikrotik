@@ -32,6 +32,7 @@ internal flash of devices without USB storage, a restart loop, and failover exam
 | `TT_PASS` | yes | | Password |
 | `TT_EXPOSE` | no | | Space-separated networks routed outside the tunnel (via the container's original gateway), e.g. your LAN. Not needed with the NAT setup below |
 | `TT_TUN_DEV` | no | `tun0` | TUN interface name |
+| `TT_IPV6` | no | `0` | Set to `1` to carry IPv6 through the tunnel (`has_ipv6` and the `2000::/3` route) |
 | `TT_LOGLEVEL` | no | `info` | `error`, `warn`, `info`, `debug`, `trace` |
 | `TT_RESTART` | no | `1` | Set to `0` to let the container exit when the client exits |
 | `TT_RESTART_DELAY` | no | `10` | Seconds to wait before restarting the client |

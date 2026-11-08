@@ -46,7 +46,13 @@ sed -i 's/^killswitch_enabled = .*/killswitch_enabled = false/' "$CFG" || true
 sed -i "s/^loglevel = .*/loglevel = \"${TT_LOGLEVEL:-info}\"/" "$CFG" || true
 # 1.1.x+: fixed tun name instead of a kernel-assigned one (tun0/tun1/...).
 sed -i "s/^device_name = .*/device_name = \"$TUN_DEV\"/" "$CFG" || true
-log "TrustTunnel config written to $CFG"
+# IPv6 through the tunnel is off unless TT_IPV6=1 (RouterOS normally routes only
+# IPv4 into the container).
+if [ "${TT_IPV6:-0}" != 1 ]; then
+  sed -i 's/^has_ipv6 = .*/has_ipv6 = false/' "$CFG" || true
+  sed -i 's/^\(included_routes = .*\), *"2000::\/3"/\1/' "$CFG" || true
+fi
+log "TrustTunnel config written to $CFG (ipv6: ${TT_IPV6:-0})"
 
 # Original default route (via veth); it is replaced by tun0 and disappears
 # together with tun0 when the client exits, so restore it before restarting.
