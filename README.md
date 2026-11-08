@@ -1,5 +1,7 @@
 # trusttunnel-client-mikrotik
 
+**English** | [Русский](https://github.com/Iv/trusttunnel-client-mikrotik/blob/main/README.ru.md)
+
 Minimal Docker image of the [TrustTunnel client](https://github.com/TrustTunnel/TrustTunnelClient)
 for MikroTik RouterOS containers.
 
