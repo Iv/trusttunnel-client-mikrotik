@@ -1,7 +1,8 @@
 #!/bin/sh
-# Usage: ./build.sh 1.1.11 [--push]
+# Local build. Usage: ./build.sh [VERSION] [--push]
+# VERSION defaults to the contents of the VERSION file.
 set -eu
-V="$1"; shift || true
+case "${1:-}" in ""|-*) V="$(cat VERSION)" ;; *) V="$1"; shift ;; esac
 mkdir -p dist
 for a in aarch64 armv7; do
   curl -fsSL -o "dist/tt-$a.tgz" \

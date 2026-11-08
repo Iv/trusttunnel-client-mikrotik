@@ -3,7 +3,8 @@
 Minimal Docker image of the [TrustTunnel client](https://github.com/TrustTunnel/TrustTunnelClient)
 for MikroTik RouterOS containers.
 
-Docker Hub: [`quai1rol/trusttunnel-client-mikrotik`](https://hub.docker.com/r/quai1rol/trusttunnel-client-mikrotik)
+- Source: [github.com/Iv/trusttunnel-client-mikrotik](https://github.com/Iv/trusttunnel-client-mikrotik)
+- Docker Hub: [`quai1rol/trusttunnel-client-mikrotik`](https://hub.docker.com/r/quai1rol/trusttunnel-client-mikrotik)
 
 - **Platforms:** `linux/arm64` (hAP ax2, ax3, …) and `linux/arm/v7` (hAP ac2, ac3, …).
 - **Small:** ~10 MB. The upstream binaries are static, so the base image is just
@@ -54,12 +55,29 @@ The command syntax can differ slightly between RouterOS 7.x versions.
 To make sure nothing is logged to flash, check that the `container` topic goes
 to a `memory` action in `/system/logging` (this is the RouterOS default).
 
-## Building
+## Publishing (GitHub Actions)
+
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds `linux/arm64` + `linux/arm/v7`
+and pushes `:<version>` and `:latest` to Docker Hub:
+
+- on push to `main` that changes the image files (builds the version in `VERSION`);
+- manually (*Actions → Publish to Docker Hub → Run workflow*), optionally with a version;
+- weekly: if upstream has a newer **stable** release, it builds it and commits the new `VERSION`.
+
+It also syncs this README to the Docker Hub overview.
+
+Repository settings needed:
+
+- variable `DOCKERHUB_USERNAME` = `quai1rol`;
+- secret `DOCKERHUB_TOKEN` = a Docker Hub access token. **Read & Write** is enough to push;
+  **Read, Write, Delete** is needed to update the Docker Hub description.
+
+## Building locally
 
 The release tarballs are downloaded on the host into `dist/`, then built with buildx:
 
 ```sh
-./build.sh 1.1.11            # build only
+./build.sh                   # build the version from VERSION
 ./build.sh 1.1.11 --push     # build and push :1.1.11 and :latest
 ```
 

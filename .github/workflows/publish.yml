@@ -1,0 +1,114 @@
+name: Publish to Docker Hub
+
+# - push to main touching the image files: rebuild VERSION and push
+# - manual run: optionally with an explicit version
+# - weekly: if upstream has a newer stable release, bump VERSION, commit, build
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile, entrypoint.sh, VERSION, README.md, .github/workflows/publish.yml]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "TrustTunnel client version (empty = VERSION file)"
+        required: false
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  IMAGE: quai1rol/trusttunnel-client-mikrotik
+  UPSTREAM: TrustTunnel/TrustTunnelClient
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          current="$(cat VERSION)"
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            v="${INPUT_VERSION#v}"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            # "latest" release on GitHub excludes pre-releases (rc/beta).
+            v="$(gh api "repos/$UPSTREAM/releases/latest" --jq .tag_name)"
+            v="${v#v}"
+          else
+            v="$current"
+          fi
+          echo "current=$current resolved=$v"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$v" = "$current" ]; then
+            echo "Up to date, nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "bump=$([ "$v" != "$current" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Download release binaries
+        if: steps.v.outputs.skip != 'true'
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          mkdir -p dist
+          for a in aarch64 armv7; do
+            curl -fsSL -o "dist/tt-$a.tgz" \
+              "https://github.com/$UPSTREAM/releases/download/v$V/trusttunnel_client-v$V-linux-$a.tar.gz"
+          done
+
+      - uses: docker/setup-qemu-action@v3
+        if: steps.v.outputs.skip != 'true'
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.v.outputs.skip != 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.v.outputs.skip != 'true'
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        if: steps.v.outputs.skip != 'true'
+        with:
+          context: .
+          platforms: linux/arm64,linux/arm/v7
+          build-args: VERSION=${{ steps.v.outputs.version }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Commit VERSION bump
+        if: steps.v.outputs.skip != 'true' && steps.v.outputs.bump == 'true'
+        run: |
+          echo "${{ steps.v.outputs.version }}" > VERSION
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Bump TrustTunnel client to ${{ steps.v.outputs.version }}"
+          git push
+
+      # Needs a Docker Hub token with "Read, Write, Delete" scope; a
+      # read/write token can push images but not edit the description.
+      - name: Update Docker Hub description
+        if: steps.v.outputs.skip != 'true'
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE }}
+          short-description: "TrustTunnel client for MikroTik RouterOS. Source: github.com/Iv/trusttunnel-client-mikrotik"
+          readme-filepath: README.md
